@@ -101,14 +101,3 @@ parseSum = do
 parseBAE = parseSum
 
 parseExpr input = parse parseBAE "" $ filter (/= ' ') input
-
-printBAE :: BAE -> String
-printBAE (BAEInteger i) = show i
-printBAE (BAEFraction d) = show d
-printBAE (BAEFunction sym expr) = "(" ++ (show sym) ++ "(" ++ (printBAE expr) ++ ")" ++ ")"
-printBAE (BAEBinaryDiff left right) = "(" ++ (printBAE left) ++ " - " ++ (printBAE right) ++ ")"
-printBAE (BAEPower base expon) = "(" ++ (printBAE base) ++ "^" ++ (printBAE expon) ++ ")"
-printBAE (BAEProduct exprs) = "(" ++ foldl (\accum element -> if accum == "" then printBAE element else accum ++ "*" ++ printBAE element) "" exprs ++ ")"
-printBAE (BAESum exprs) = "(" ++ foldl (\accum element -> if accum == "" then printBAE element else accum ++ "+" ++ printBAE element) "" exprs ++ ")"
-printBAE (BAESymbol sym) = show sym
-printBAE (BAEUnaryExpr c expr) = "(" ++ [c] ++ (printBAE expr) ++ ")"
