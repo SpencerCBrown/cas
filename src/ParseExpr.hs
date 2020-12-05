@@ -1,6 +1,9 @@
 {-# LANGUAGE LambdaCase #-}
 module ParseExpr
     (
+       Symbol,
+       BAE (..),
+       parseExpr
     ) where
 
 import Text.Parsec
