@@ -1,142 +1,114 @@
+{-# LANGUAGE LambdaCase #-}
 module ParseExpr
-    ( Equation (..),
-      Expr (..),
-      printExpr,
-      runMyParser,
-      runMyParser',
-      printEq
+    (
     ) where
 
 import Text.Parsec
 import Text.Parsec.String
 import Text.Parsec.Number
 
---- Each parse input should be a single line containing a nested mathematical expression
+-- type definition for Basic Algebraic Expression
+data BAE =
+    BAEInteger Integer
+  | BAEFraction Double
+  | BAESymbol Symbol
+  | BAEProduct [BAE]
+  | BAESum [BAE]
+  | BAEQuotient BAE BAE
+  | BAEUnaryExpr Char BAE -- for e.g. unary minus the Char will be '-'.
+  | BAEBinaryDiff BAE BAE
+  | BAEPower BAE BAE
+  | BAEFunction Symbol BAE
+  deriving Show
 
-upcast :: Either Integer Double -> Double
-upcast (Right d) = d
-upcast (Left i) = fromIntegral i
+type Symbol = String
 
---- We need to parse individual numbers
-parsenum = parsecMap upcast
-  (try (decFract True)
-    <|> try (decFract False))
-
---- We also need to parse string indentifiers. We can match/filter special names later.
-parseId = many letter
-
---- parse functions/symbols/etc
 parseSymbol = do
-  char '\\'
-  parseId
+  optional (char '\\') -- optionally, parse the LaTeX backslash at the start of a predefined symbol. We ignore this.
+  letters <- many1 letter
+  return (BAESymbol letters)
 
-strToSymbol = parsecMap (\str -> strToSymbol' str)
-strToSymbol' str
-  | str == "sin"  = SIN
-  | str == "cos"  = COS
-  | str == "tan"  = TAN
-  | str == "exp"  = EXP
-  | str == "log"   = LOG
+parseNumber = parsecMap (\s -> case s of 
+  Right f -> BAEFraction f
+  Left i -> BAEInteger i) decimalFract
 
--- highest operator precedence
--- this should return type Expr (with constructors )
-
--- for now, just supporting 'functions' with one inner expression.
--- will need to extend for functions like exp(base, exponent)
--- currently, assume the expression is the exponent and the base is always e.
-parseFunctionExpr = do
-  functionName <- strToSymbol parseSymbol
+parseFunction = do
+  (BAESymbol sym) <- parseSymbol
   char '('
-  innerExprs <- parseAddExpr `sepBy` (char ',')
+  expr <- parseBAE
   char ')'
-  return (FunctionExpr functionName innerExprs)
-
+  return (BAEFunction sym expr)
 
 parseParenthesizedExpr = do
   char '('
-  e <- parseAddExpr
+  e <- parseBAE
   char ')'
   return e
 
-parsePrimary = do
-  try parseFunctionExpr
-  <|> parsecMap Parens (try parseParenthesizedExpr)
-  <|> (parsecMap Value (try parsenum))
-  <|> (parsecMap ID (try parseId))
+parseQuotient = do
+  char '\\'
+  string "frac"
+  char '{'
+  numerator <- parseBAE
+  char '}'
+  char '{'
+  denominator <- parseBAE
+  char '}'
+  return (BAEQuotient numerator denominator)
 
-parseMultExpr = do
-  leftOp <- parsePrimary
-  rightOp <- optionMaybe (parseMultExpr')
-  return (constructMultExpr leftOp rightOp)
+parsePrimary = (try parseFunction)
+  <|> (try parseQuotient)
+  <|> (try parseSymbol)
+  <|> (try parseNumber)
+  <|> (try parseParenthesizedExpr)
 
-constructMultExpr :: Expr -> Maybe (Char, Expr) -> Expr
-constructMultExpr e Nothing = e
-constructMultExpr e (Just (operator, rightExpr)) = if operator == '*' then Mult e rightExpr else Div e rightExpr
+parsePower = do
+  base <- parsePrimary
+  opAndExpn <- optionMaybe (char '^' >> parsePower)
+  return (case opAndExpn of
+    Nothing     -> base
+    Just expon  -> BAEPower base expon)
 
-parseMultExpr' = do
-  operator <- oneOf "*/"
-  rightOp <- parseMultExpr
-  return (operator, rightOp)
+parseUnary = do
+  unaryOp <- optionMaybe ((try (char '-')) <|> (try (char '+'))) -- unary BAE must support unary product internally, but we don't have to parse for it.
+  expr <- parsePower
+  return (case unaryOp of 
+    Nothing   -> expr
+    Just c    -> BAEUnaryExpr c expr)
 
-parseAddExpr = do
-  leftExpr <- parseMultExpr
-  opAndRightExpr <- optionMaybe (parseAddExpr')
-  return (constructAddExpr leftExpr opAndRightExpr)
+parseProduct = do
+  -- sequence of parseUnary and parseBAE?
+  leftExpr <- parseUnary
+  rightExprs <- optionMaybe (char '*' >> (parseUnary `sepBy` (char '*')))
+  return (case rightExprs of
+    Nothing   -> leftExpr
+    Just es   -> BAEProduct (leftExpr:es))
 
-constructAddExpr e Nothing = e
-constructAddExpr e (Just (operator, rightExpr)) = if operator == '+' then Add e rightExpr else Sub e rightExpr
+parseBinaryDiff = do
+  leftExpr <- parseProduct
+  rightExpr <- optionMaybe (char '-' >> parseProduct)
+  return (case rightExpr of
+    Nothing   -> leftExpr
+    Just r    -> BAEBinaryDiff leftExpr r)
 
-parseAddExpr' = do
-  operator <- oneOf "+-"
-  rightExpr <- parseAddExpr
-  return (operator, rightExpr)
+parseSum = do
+  leftExpr <- parseBinaryDiff
+  rightExprs <- optionMaybe (char '+' >> ((parseBinaryDiff) `sepBy` (char '+')))
+  return (case rightExprs of
+    Nothing   -> leftExpr
+    Just es   -> BAESum (leftExpr:es))
 
-parseEquation = do
-  expr1 <- parseAddExpr
-  char '='
-  expr2 <- parseAddExpr
-  return (Equation expr1 expr2)
+parseBAE = parseSum
 
-runMyParser :: [Char] -> Either ParseError Equation
-runMyParser input = parse parseEquation "" $ filter (\s -> s /= ' ') input
+parseExpr input = parse parseBAE "" $ filter (/= ' ') input
 
-runMyParser' :: [Char] -> Either ParseError Expr
-runMyParser' input = parse parseAddExpr "" $ filter (\s -> s /= ' ') input
-
-data Symbol = SIN | COS | TAN | EXP | LOG
-  deriving (Show, Eq)
-
-data Equation = Equation Expr Expr
-
-data Expr = 
-  Parens Expr -- parenthesized expression
-    | FunctionExpr Symbol [Expr]
-    | Add Expr Expr
-    | Sub Expr Expr
-    | Mult Expr Expr
-    | Div Expr Expr
-    | Value Double
-    | ID [Char]
-  deriving Eq
-
-instance Ord Expr where
-  (Value d1) `compare` (Value d2) = d1 `compare` d2
-  (ID s1) `compare` (ID s2) = s1 `compare` s2
-  Add 
-
-printExpr :: Expr -> String
-printExpr expr = "(" ++ (printExpr' expr) ++ ")"
-printExpr' (Value d) = (show d)
-printExpr' (ID id) = (show id)
-printExpr' (Add e1 e2) = "ADD " ++ "(" ++ (printExpr' e1) ++ ")" ++ " " ++ "(" ++ (printExpr' e2) ++ ")"
-printExpr' (Sub e1 e2) = "SUB " ++ "(" ++ (printExpr' e1) ++ ")" ++ " " ++ "(" ++ (printExpr' e2) ++ ")"
-printExpr' (Mult e1 e2) = "MULT " ++ "(" ++ (printExpr' e1) ++ ")" ++ " " ++ "(" ++ (printExpr' e2) ++ ")"
-printExpr' (Div e1 e2) = "DIV " ++ "(" ++ (printExpr' e1) ++ ")" ++ " " ++ "(" ++ (printExpr' e2) ++ ")"
-printExpr' (Parens e) = printExpr' e
-printExpr' (FunctionExpr name es) = (show name) ++ " (" ++ (printFunctionExprs es) ++ ")"
-
-printFunctionExprs :: [Expr] -> String
-printFunctionExprs es = foldl (\accum element -> if accum == "" then printExpr' element else accum ++ "," ++ printExpr' element) "" es
-
-printEq :: Equation -> String
-printEq (Equation e1 e2) = "(" ++ "=" ++ " " ++ (printExpr e1) ++ " " ++ (printExpr e2) ++ " " ++ ")"
+printBAE :: BAE -> String
+printBAE (BAEInteger i) = show i
+printBAE (BAEFraction d) = show d
+printBAE (BAEFunction sym expr) = "(" ++ (show sym) ++ "(" ++ (printBAE expr) ++ ")" ++ ")"
+printBAE (BAEBinaryDiff left right) = "(" ++ (printBAE left) ++ " - " ++ (printBAE right) ++ ")"
+printBAE (BAEPower base expon) = "(" ++ (printBAE base) ++ "^" ++ (printBAE expon) ++ ")"
+printBAE (BAEProduct exprs) = "(" ++ foldl (\accum element -> if accum == "" then printBAE element else accum ++ "*" ++ printBAE element) "" exprs ++ ")"
+printBAE (BAESum exprs) = "(" ++ foldl (\accum element -> if accum == "" then printBAE element else accum ++ "+" ++ printBAE element) "" exprs ++ ")"
+printBAE (BAESymbol sym) = show sym
+printBAE (BAEUnaryExpr c expr) = "(" ++ [c] ++ (printBAE expr) ++ ")"
