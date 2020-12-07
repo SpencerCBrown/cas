@@ -23,6 +23,7 @@ dependencies:
 - base >= 4.7 && < 5
 - parsec
 - parsec3-numbers >= 0.1.0
+- data-ordlist
 
 library:
   source-dirs: src

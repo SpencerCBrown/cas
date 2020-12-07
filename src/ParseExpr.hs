@@ -22,7 +22,8 @@ data BAE =
   | BAEBinaryDiff BAE BAE
   | BAEPower BAE BAE
   | BAEFunction Symbol BAE
-  deriving Show
+  | BAEUndefined -- should this be represented as (BAESymbol "undefined") ?
+  deriving (Show, Eq)
 
 type Symbol = String
 
