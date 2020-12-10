@@ -6,6 +6,139 @@ module Solver
 import ParseExpr
 import Data.List.Ordered
 
+{- unfortunately we can't encode ASAE into the type system.
+    That would requirement dependent types, as in coq, agda, or idris
+-}
+
+-- convenience functions
+isInteger (BAEInteger _) = True
+isInteger _ = False
+
+getInteger (BAEInteger i) = i
+getInteger _ = undefined
+
+isFraction (BAEFraction _) = True
+isFraction _ = False
+
+getFraction (BAEFraction f) = f
+getFraction _ = undefined
+
+isPower (BAEPower _ _) = True
+isPower _ = False
+
+isUnary (BAEUnaryExpr _ _) = True
+isUnary _ = False
+
+isProduct (BAEProduct _) = True
+isProduct _ = False
+
+isSum (BAESum _) = True
+isSum _ = False
+
+isDiff (BAEBinaryDiff _ _) = True
+isDiff _ = False
+
+isQuotient (BAEQuotient _ _) = True
+isQuotient _ = False
+
+isPositiveInteger (BAEInteger i) = i > 0
+isPositiveInteger _ = False
+
+isPositiveFraction (BAEFraction f) = f > 0
+isPositiveFraction _ = False
+
+isUndefined BAEUndefined = True
+isUndefined _ = False
+
+simplifyExpr expr
+    | isPower expr  = let (BAEPower base expon) = expr in simplifyPower (BAEPower (simplifyExpr base) (simplifyExpr expon))
+    | otherwise     = expr
+
+-- simplification transformations
+-- TODO: these comparisons to == BAEInteger _ may be weird for non BAEInteger types. Is that OK?
+simplifyPower (BAEPower base expon)
+    | isUndefined base || isUndefined expon = BAEUndefined
+    | base == BAEInteger 0 = if (isPositiveInteger expon) || (isPositiveFraction expon) then BAEInteger 0 else BAEUndefined
+    | base == BAEInteger 1 = BAEInteger 1
+    | isInteger expon   = simplifyIntegerPower (BAEPower base expon)
+    | otherwise = (BAEPower base expon)
+
+-- if this is called, base /= 0, expon is an integer
+simplifyIntegerPower (BAEPower base expon)
+    | isInteger base || isFraction base = simplifyRNE (BAEPower base expon)
+    | expon == BAEInteger 0    = BAEInteger 1
+    | expon == BAEInteger 1    = base
+    | isPower base      = simplifyPowerOfPower base expon
+    | isProduct base    = let 
+        (BAEProduct os) = base
+        newoperands = map (\o -> simplifyIntegerPower (BAEPower o expon)) os
+        in simplifyProduct (BAEProduct newoperands)
+    | otherwise {- symbol, sum, or function -}  = BAEPower base expon 
+    where
+        simplifyPowerOfPower :: BAE -> BAE -> BAE
+        simplifyPowerOfPower (BAEPower r s) n = if isInteger p then simplifyIntegerPower (BAEPower r p) else BAEPower r p
+            where p = simplifyProduct (BAEProduct [s, n])
+
+simplifyProduct a = a
+
+simplifyRNE expr = let 
+    v = simplifyRNE' expr
+    in if isUndefined v then BAEUndefined else simplifyRationalNumber v
+
+simplifyRNE' :: BAE -> BAE
+simplifyRNE' expr
+    | isInteger expr    = expr
+    | isFraction expr   = expr
+    | isUnary expr      = let (BAEUnaryExpr c e) = expr in if c == '-' then evaluateProduct (BAEInteger (-1)) (simplifyRNE' e) else simplifyRNE' e
+    | isSum expr || isProduct expr || isDiff expr || isQuotient expr    = case expr of
+        (BAESum os) -> if any isUndefined simplifiedOps then BAEUndefined else evaluateSum (simplifiedOps!!0) (simplifiedOps!!1) where simplifiedOps = map simplifyRNE' os
+        (BAEProduct os) -> if any isUndefined simplifiedOps then BAEUndefined else evaluateProduct (simplifiedOps!!0) (simplifiedOps!!1) where simplifiedOps = map simplifyRNE' os
+        (BAEBinaryDiff a b) -> if isUndefined a' || isUndefined b' then BAEUndefined else evaluateDifference a' b' where
+            a' = simplifyRNE' a
+            b' = simplifyRNE' b
+        (BAEQuotient a b) -> if isUndefined a' || isUndefined b' then BAEUndefined else evaluateQuotient a' b' where
+            a' = simplifyRNE' a
+            b' = simplifyRNE' b
+    | isPower expr      = let (BAEPower base expon) = expr in let base' = simplifyRNE' base in if base' == BAEUndefined then BAEUndefined else evaluatePower base' expon
+
+-- must be fraction or integer
+simplifyRationalNumber expr = case expr of
+    (BAEInteger i) -> expr
+    (BAEFraction f) -> expr -- a double is already in standard form, no need to reduce
+    _ -> undefined
+
+evaluateProduct a b = let
+    a' = getFraction (intToFrac a)
+    b' = getFraction (intToFrac b)
+    product = a' * b'
+    in if floor product == ceiling product then BAEInteger (truncate product) else BAEFraction product
+
+evaluateSum a b = let
+    a' = getFraction (intToFrac a)
+    b' = getFraction (intToFrac b)
+    sum = a' + b'
+    in if floor sum == ceiling sum then BAEInteger (truncate sum) else BAEFraction sum
+
+evaluateDifference a b = let
+    a' = getFraction (intToFrac a)
+    b' = getFraction (intToFrac b)
+    diff = a' - b'
+    in if floor diff == ceiling diff then BAEInteger (truncate diff) else BAEFraction diff
+
+evaluateQuotient :: BAE -> BAE -> BAE
+evaluateQuotient numerator denominator = if denominator == (BAEInteger 0) then BAEUndefined else BAEFraction (num / denom) where
+    (BAEFraction num) = intToFrac numerator
+    (BAEFraction denom) = intToFrac denominator
+
+intToFrac intOrFrac = case intOrFrac of
+    (BAEInteger x) -> BAEFraction (fromIntegral x)
+    (BAEFraction x) -> BAEFraction x
+    _ -> undefined
+
+evaluatePower base expon
+    | base == BAEInteger 0      = if expon >= BAEInteger 1 then BAEInteger 0 else {- n<=0 -} BAEUndefined
+    | otherwise                 = if expon == BAEInteger 0 then BAEInteger 1 else BAEFraction (getFraction (intToFrac base) ^^ getInteger expon)
+
 -- ordering relation for expressions
 instance Ord BAE where
     (BAEInteger i1) `compare` (BAEInteger i2)   = i1 `compare` i2
@@ -95,7 +228,7 @@ asea_3 _                = False
 -}
 
 asae_4 (BAEProduct operands) = let
-    operandsAreASAE = null $ filter (\e -> not isASAE) operands
+    operandsAreASAE = all isASAE operands
     noOperandIsProduct = foldl (\accum e -> case e of
         (BAEProduct _) -> False
         _ -> accum) True operands
@@ -106,7 +239,7 @@ asae_4 (BAEProduct operands) = let
     in operandsAreASAE && noOperandIsProduct && atMostOneOperandIsConst && isSorted operands
 
 asae_5 (BAESum operands) = let
-    operandsAreASAE = null $ filter (\e -> not isASAE) operands
+    operandsAreASAE = all isASAE operands
     noOperandIsSum = foldl (\accum e -> case e of
         (BAESum _) -> False
         _ -> accum) True operands
@@ -124,7 +257,7 @@ asae_6 (BAEPower base expon) = let
             (BAESum _) -> True
             (BAEFunction _ _) -> True
             _ -> False
-        _ -> (base /= 0) && (base /= 1)
-    in operandsAreASAE && (expon /= 0) && (expon /= 1) && wellformed
+        _ -> (base /= BAEInteger 0) && (base /= BAEInteger 1)
+    in operandsAreASAE && (expon /= BAEInteger 0) && (expon /= BAEInteger 1) && wellformed
 
 asae_8 (BAEFunction sym expr) = isASAE expr
