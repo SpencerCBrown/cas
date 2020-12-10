@@ -47,6 +47,20 @@ isPositiveInteger _ = False
 isPositiveFraction (BAEFraction f) = f > 0
 isPositiveFraction _ = False
 
+isConstant (BAEInteger _) = True
+isConstant (BAEFraction _) = True
+isConstant _ = False
+
+getBase (BAEInteger _) = BAEUndefined
+getBase (BAEFraction _) = BAEUndefined
+getBase (BAEPower base _) = base
+getBase expr    = expr
+
+getExp (BAEInteger _) = BAEUndefined
+getExp (BAEFraction _) = BAEUndefined
+getExp (BAEPower _ expon) = expon
+getExp expr = BAEInteger 1
+
 isUndefined BAEUndefined = True
 isUndefined _ = False
 
@@ -79,7 +93,53 @@ simplifyIntegerPower (BAEPower base expon)
         simplifyPowerOfPower (BAEPower r s) n = if isInteger p then simplifyIntegerPower (BAEPower r p) else BAEPower r p
             where p = simplifyProduct (BAEProduct [s, n])
 
-simplifyProduct a = a
+simplifyProduct (BAEProduct os)
+    | any isUndefined os        = BAEUndefined
+    | BAEInteger 0 `elem` os    = BAEInteger 0
+    | length os == 1            = head os
+    | otherwise                 = let v = simplifyProduct' (BAEProduct os) in if length v == 1 then head v else if null v then BAEInteger 1 else BAEProduct v
+
+simplifyProduct' :: BAE -> [BAE]
+simplifyProduct' (BAEProduct os)
+    | length os == 2 && not (any isProduct os)      = case1 (head os, os!!1)
+    | length os == 2 && any isProduct os            = case2 (head os, os!!1)
+    | length os > 2                                 = case3 os
+    where
+        case1 (e1, e2)
+            | isConstant e1 && isConstant e2    = let p = simplifyRNE (BAEProduct [e1, e2]) in [p | p /= BAEInteger 1]
+            | e1 == BAEInteger 1    = [e2]
+            | e2 == BAEInteger 1    = [e1]
+            | getBase e1 == getBase e2  = let
+                s = simplifySum (BAESum [getExp e1, getExp e2])
+                p = simplifyPower (BAEPower (getBase e1) s)
+                in [p | p /= BAEInteger 1]
+            | e2 < e1   = [e2, e1]
+        case2 (e1, e2)
+            | isProduct e1 && isProduct e2 = let
+                (BAEProduct os1) = e1
+                (BAEProduct os2) = e2
+                in mergeProducts os1 os2
+            | isProduct e1 && not (isProduct e2) = let (BAEProduct os1) = e1 in mergeProducts os1 [e2]
+            | isProduct e2 && not (isProduct e1) = let (BAEProduct os1) = e2 in mergeProducts os1 [e1]
+        case3 ops1 = let 
+            w = simplifyProduct' (BAEProduct (tail ops1))
+            (BAEProduct ops2) = head ops1
+            in if isProduct (head ops1) then mergeProducts ops2 w else mergeProducts [(head ops1)] w
+
+mergeProducts :: [BAE] -> [BAE] -> [BAE]
+mergeProducts p q
+    | null p    = q
+    | null p    = q
+    | otherwise = let
+        p1 = head p
+        q1 = head q
+        h = simplifyProduct' (BAEProduct [p1, q1])
+        adjoin a b = a:b
+        in if null h then mergeProducts (tail p) (tail q) else if length h == 1 then adjoin (head h) (mergeProducts (tail p) (tail q)) else if h == [p1, q1] then adjoin p1 (mergeProducts (tail p) q) else {- h == [q1, p1] -} adjoin q1 (mergeProducts p (tail q))
+
+simplifySum :: BAE -> BAE
+simplifySum = undefined
+
 
 simplifyRNE expr = let 
     v = simplifyRNE' expr
