@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: cdd8fc369d031436215448ad4c3f5c0b685088cfba1817acd377a5a8dbd5e7fd
+-- hash: 7572b27aa0ba76b571c0864d085e9db95a827b4f20ae02121403df0d19e22703
 
 name:           cas
 version:        0.1.0.0
@@ -28,7 +28,8 @@ source-repository head
 library
   exposed-modules:
       ParseExpr
-      Solver
+      Simplify
+      Solve
   other-modules:
       Paths_cas
   hs-source-dirs:
