@@ -64,10 +64,10 @@ getExp expr = BAEInteger 1
 
 getTerm (BAEInteger _) = BAEUndefined
 getTerm (BAEFraction _) = BAEUndefined
-getTerm (BAESymbol u) = BAESymbol u
-getTerm (BAESum os) = BAESum os
-getTerm (BAEPower base expon) = BAEPower base expon
-getTerm (BAEFunction sym e) = BAEFunction sym e
+getTerm (BAESymbol u) = BAEProduct [BAESymbol u]
+getTerm (BAESum os) = BAEProduct [BAESum os]
+getTerm (BAEPower base expon) = BAEProduct [BAEPower base expon]
+getTerm (BAEFunction sym e) = BAEProduct [BAEFunction sym e]
 getTerm (BAEProduct os)
     | isConstant (head os)  = BAEProduct (tail os)
     | otherwise             = BAEProduct os
@@ -86,10 +86,23 @@ isUndefined BAEUndefined = True
 isUndefined _ = False
 
 simplifyExpr :: BAE -> BAE
-simplifyExpr expr
-    | isPower expr  = let (BAEPower base expon) = expr in simplifyPower (BAEPower (simplifyExpr base) (simplifyExpr expon))
-    | isProduct expr = let (BAEProduct os) = expr in simplifyProduct (BAEProduct (map simplifyExpr os))
-    | otherwise     = expr
+simplifyExpr (BAEPower base expon) = simplifyPower (BAEPower (simplifyExpr base) (simplifyExpr expon))
+simplifyExpr (BAEProduct os) = simplifyProduct (BAEProduct (map simplifyExpr os))
+simplifyExpr (BAESum os) = simplifySum (BAESum (map simplifyExpr os))
+simplifyExpr (BAEUnaryExpr c e) = simplifyUnary (BAEUnaryExpr c (simplifyExpr e))
+simplifyExpr (BAEQuotient p q) = simplifyQuotient (BAEQuotient (simplifyExpr p) (simplifyExpr q))
+simplifyExpr (BAEBinaryDiff a b) = simplifyDifference (BAEBinaryDiff (simplifyExpr a) (simplifyExpr b))
+simplifyExpr (BAEFunction sym e) = simplifyFunction (BAEFunction sym (simplifyExpr e))
+
+-- simplifyExpr expr
+--     | isPower expr  = let (BAEPower base expon) = expr in simplifyPower (BAEPower (simplifyExpr base) (simplifyExpr expon))
+--     | isProduct expr = let (BAEProduct os) = expr in simplifyProduct (BAEProduct (map simplifyExpr os))
+--     | isSum expr    = let (BAESum os) = expr in simplifySum (BAESum (map simplifyExpr os))
+--     | isUnary expr  = let (BAEUnaryExpr c e) = expr in simplifyUnary (BAEUnaryExpr c (simplifyExpr e))
+--     | isQuotient expr   = let (BAEQuotient p q) = expr in simplifyQuotient (BAEQuotient (simplifyExpr p) (simplifyExpr q))
+--     | isDiff expr   = let (BAEBinaryDiff a b) = expr in simplifyDifference (BAEBinaryDiff (simplifyExpr a) (simplifyExpr b))
+--     | isFunction expr = let (BAEFunction sym e) = expr in simplifyFunction (BAEFunction sym (simplifyExpr e))
+--     | otherwise     = expr
 
 -- simplification transformations
 -- TODO: these comparisons to == BAEInteger _ may be weird for non BAEInteger types. Is that OK?
