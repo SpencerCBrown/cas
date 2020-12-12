@@ -71,7 +71,7 @@ solutionSteps (Equation left right) = let
     left' = simplifyExpr (subtractExpr right left)
     right' = simplifyExpr (subtractExpr right right)
     thisEquation = if not (null (symbolsInExpr right)) then Equation (simplifyExpr left') (BAEInteger 0) else Equation left right 
-    thisStep = if not (null (symbolsInExpr right)) then "Subtract " ++ printExpr right ++ " from both sides and simplify.\n\n" ++ printEquation thisEquation ++ "\n\n" else ""
+    thisStep = if not (null (symbolsInExpr right)) then "Subtract " ++ printExpr right ++ " from both sides and simplify.\n\n" ++ printEquation thisEquation ++ "\n\n" else "Simplify.\n\n" ++ printEquation thisEquation
 
     (followingSteps, finalEquation) = solutionSteps' thisEquation
     in (thisStep ++ followingSteps, finalEquation)
