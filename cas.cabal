@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 7572b27aa0ba76b571c0864d085e9db95a827b4f20ae02121403df0d19e22703
+-- hash: a22e217a270e6cf5196cd45789f240fc96d7aa617c3808ce0da8e53b710b597f
 
 name:           cas
 version:        0.1.0.0
@@ -37,6 +37,7 @@ library
   build-depends:
       base >=4.7 && <5
     , data-ordlist
+    , generic-deriving
     , parsec
     , parsec3-numbers >=0.1.0
   default-language: Haskell2010
@@ -52,6 +53,7 @@ executable cas-exe
       base >=4.7 && <5
     , cas
     , data-ordlist
+    , generic-deriving
     , parsec
     , parsec3-numbers >=0.1.0
   default-language: Haskell2010
@@ -68,6 +70,7 @@ test-suite cas-test
       base >=4.7 && <5
     , cas
     , data-ordlist
+    , generic-deriving
     , parsec
     , parsec3-numbers >=0.1.0
   default-language: Haskell2010

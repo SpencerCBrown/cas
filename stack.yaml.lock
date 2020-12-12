@@ -11,6 +11,13 @@ packages:
       sha256: a3d23f56cc2a9d17ed24ac5119a7b2102d40c0afeed5271f6b41b7597f181df0
   original:
     hackage: parsec3-numbers-0.1.0@sha256:2f32295f9f4023f7f97da851549aaaf5e72866e98bf016a1ac3c6e8715bbaf8a,685
+- completed:
+    hackage: regex-posix-clib-2.7@sha256:998fca06da3d719818f0691ef0b8b9b7375afeea228cb08bd9e2db53f96b0cd7,1232
+    pantry-tree:
+      size: 524
+      sha256: 5bf20952472d930323766d250f5fbbe3fe6f2cd3d931e5cf7b62a238ab2099ff
+  original:
+    hackage: regex-posix-clib-2.7
 snapshots:
 - completed:
     size: 532832

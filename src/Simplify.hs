@@ -7,7 +7,7 @@ module Simplify
 import ParseExpr
 import Data.List.Ordered
 
-{- unfortunately we can't encode ASAE into the type system.
+{- unfortunately wef can't encode ASAE into the type system.
     That would requirement dependent types, as in coq, agda, or idris
 -}
 
@@ -85,24 +85,27 @@ getConst (BAEProduct os)
 isUndefined BAEUndefined = True
 isUndefined _ = False
 
-simplifyExpr :: BAE -> BAE
-simplifyExpr (BAEPower base expon) = simplifyPower (BAEPower (simplifyExpr base) (simplifyExpr expon))
-simplifyExpr (BAEProduct os) = simplifyProduct (BAEProduct (map simplifyExpr os))
-simplifyExpr (BAESum os) = simplifySum (BAESum (map simplifyExpr os))
-simplifyExpr (BAEUnaryExpr c e) = simplifyUnary (BAEUnaryExpr c (simplifyExpr e))
-simplifyExpr (BAEQuotient p q) = simplifyQuotient (BAEQuotient (simplifyExpr p) (simplifyExpr q))
-simplifyExpr (BAEBinaryDiff a b) = simplifyDifference (BAEBinaryDiff (simplifyExpr a) (simplifyExpr b))
-simplifyExpr (BAEFunction sym e) = simplifyFunction (BAEFunction sym (simplifyExpr e))
+isFunction (BAEFunction _ _) = True
+isFunction _ = False
 
--- simplifyExpr expr
---     | isPower expr  = let (BAEPower base expon) = expr in simplifyPower (BAEPower (simplifyExpr base) (simplifyExpr expon))
---     | isProduct expr = let (BAEProduct os) = expr in simplifyProduct (BAEProduct (map simplifyExpr os))
---     | isSum expr    = let (BAESum os) = expr in simplifySum (BAESum (map simplifyExpr os))
---     | isUnary expr  = let (BAEUnaryExpr c e) = expr in simplifyUnary (BAEUnaryExpr c (simplifyExpr e))
---     | isQuotient expr   = let (BAEQuotient p q) = expr in simplifyQuotient (BAEQuotient (simplifyExpr p) (simplifyExpr q))
---     | isDiff expr   = let (BAEBinaryDiff a b) = expr in simplifyDifference (BAEBinaryDiff (simplifyExpr a) (simplifyExpr b))
---     | isFunction expr = let (BAEFunction sym e) = expr in simplifyFunction (BAEFunction sym (simplifyExpr e))
---     | otherwise     = expr
+-- simplifyExpr :: BAE -> BAE
+-- simplifyExpr (BAEPower base expon) = simplifyPower (BAEPower (simplifyExpr base) (simplifyExpr expon))
+-- simplifyExpr (BAEProduct os) = simplifyProduct (BAEProduct (map simplifyExpr os))
+-- simplifyExpr (BAESum os) = simplifySum (BAESum (map simplifyExpr os))
+-- simplifyExpr (BAEUnaryExpr c e) = simplifyUnary (BAEUnaryExpr c (simplifyExpr e))
+-- simplifyExpr (BAEQuotient p q) = simplifyQuotient (BAEQuotient (simplifyExpr p) (simplifyExpr q))
+-- simplifyExpr (BAEBinaryDiff a b) = simplifyDifference (BAEBinaryDiff (simplifyExpr a) (simplifyExpr b))
+-- simplifyExpr (BAEFunction sym e) = simplifyFunction (BAEFunction sym (simplifyExpr e))
+
+simplifyExpr expr
+    | isPower expr  = let (BAEPower base expon) = expr in simplifyPower (BAEPower (simplifyExpr base) (simplifyExpr expon))
+    | isProduct expr = let (BAEProduct os) = expr in simplifyProduct (BAEProduct (map simplifyExpr os))
+    | isSum expr    = let (BAESum os) = expr in simplifySum (BAESum (map simplifyExpr os))
+    | isUnary expr  = let (BAEUnaryExpr c e) = expr in simplifyUnary (BAEUnaryExpr c (simplifyExpr e))
+    | isQuotient expr   = let (BAEQuotient p q) = expr in simplifyQuotient (BAEQuotient (simplifyExpr p) (simplifyExpr q))
+    | isDiff expr   = let (BAEBinaryDiff a b) = expr in simplifyDifference (BAEBinaryDiff (simplifyExpr a) (simplifyExpr b))
+    | isFunction expr = let (BAEFunction sym e) = expr in simplifyFunction (BAEFunction sym (simplifyExpr e))
+    | otherwise     = expr
 
 -- simplification transformations
 -- TODO: these comparisons to == BAEInteger _ may be weird for non BAEInteger types. Is that OK?
@@ -150,6 +153,7 @@ simplifyProduct' (BAEProduct os)
                 p = simplifyPower (BAEPower (getBase e1) s)
                 in [p | p /= BAEInteger 1]
             | e2 < e1   = [e2, e1]
+            | otherwise = [e1, e2]
         case2 (e1, e2)
             | isProduct e1 && isProduct e2 = let
                 (BAEProduct os1) = e1
@@ -193,6 +197,8 @@ simplifySum' (BAESum os)
                 s = simplifySum (BAESum [getConst e1, getConst e2])
                 p = simplifyProduct (BAEProduct [s, getTerm e1]) -- equivalent to [s, getTerm e2], of course
                 in [p | p /= BAEInteger 0]
+            | e2 < e1   = [e2, e1]
+            | e1 < e2   = [e1, e2]
         case2 (e1, e2)
             | isSum e1 && isSum e2  = let
                 (BAESum os1) = e1

@@ -1,10 +1,18 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE DeriveGeneric #-}
+
 module ParseExpr
     (
        Symbol,
        BAE (..),
-       parseExpr
+       Equation (..),
+       parseExpr,
+       parseEquation
     ) where
+
+
+import Generics.Deriving.Base(Generic)
+import Generics.Deriving.Eq(GEq, geq)
 
 import Text.Parsec
 import Text.Parsec.String
@@ -23,7 +31,17 @@ data BAE =
   | BAEPower BAE BAE
   | BAEFunction Symbol BAE
   | BAEUndefined -- should this be represented as (BAESymbol "undefined") ?
-  deriving (Show, Eq)
+  deriving (Show, Generic)
+
+instance GEq BAE
+
+instance Eq BAE where
+  BAEInteger i == BAEFraction f = fromIntegral i == f
+  BAEFraction f == BAEInteger i = fromIntegral i == f
+  x == y = geq x y
+
+data Equation = Equation BAE BAE
+  deriving Show
 
 type Symbol = String
 
@@ -104,4 +122,12 @@ parseSum = do
 
 parseBAE = parseSum
 
+parseEq = do
+  left <- parseBAE
+  char '='
+  right <- parseBAE
+  return (Equation left right)
+
 parseExpr input = parse parseBAE "" $ filter (/= ' ') input
+
+parseEquation input = parse parseEq "" $ filter (/= ' ') input

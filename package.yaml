@@ -24,6 +24,7 @@ dependencies:
 - parsec
 - parsec3-numbers >= 0.1.0
 - data-ordlist
+- generic-deriving
 
 library:
   source-dirs: src

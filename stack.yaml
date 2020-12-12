@@ -67,3 +67,8 @@ packages:
 # compiler-check: newer-minor
 extra-deps:
 - parsec3-numbers-0.1.0@sha256:2f32295f9f4023f7f97da851549aaaf5e72866e98bf016a1ac3c6e8715bbaf8a,685
+- regex-posix-clib-2.7
+
+flags:
+  regex-posix:
+    _regex-posix-clib: true

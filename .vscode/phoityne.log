@@ -1,0 +1,15 @@
+2020-12-11 18:55:53.492800500000 [$pid(ThreadId 5)] INFO APP - "--with-ghc" option not found. adding "--with-ghc=ghci-dap"
+2020-12-11 18:55:54.474976600000 [$pid(ThreadId 7)] INFO WATCH - start watching C:\Users\Spencer Brown\Documents\Projects\cas
+2020-12-11 18:55:55.448077100000 [$pid(ThreadId 5)] ERROR APP - start debugging failed. user error (ExecResult not found.) : Left "user error (ExecResult not found.)"
+2020-12-11 18:56:18.977015600000 [$pid(ThreadId 4)] INFO REQUEST - disconnect. end of request thread.
+2020-12-11 18:56:18.979015700000 [$pid(ThreadId 5)] INFO APP - disconnect. end of application thread.
+2020-12-11 18:56:18.983006000000 [$pid(ThreadId 6)] INFO RESPONSE - disconnect. end of response thread.
+2020-12-11 18:56:48.899900000000 [$pid(ThreadId 5)] INFO APP - "--with-ghc" option not found. adding "--with-ghc=ghci-dap"
+2020-12-11 18:56:49.889894700000 [$pid(ThreadId 7)] INFO WATCH - start watching C:\Users\Spencer Brown\Documents\Projects\cas
+2020-12-11 18:56:50.505896500000 [$pid(ThreadId 5)] ERROR APP - start debugging failed. user error (ExecResult not found.) : Left "user error (ExecResult not found.)"
+2020-12-11 18:58:12.910656900000 [$pid(ThreadId 4)] INFO REQUEST - disconnect. end of request thread.
+2020-12-11 18:58:12.911657000000 [$pid(ThreadId 5)] INFO APP - disconnect. end of application thread.
+2020-12-11 18:58:12.914721100000 [$pid(ThreadId 6)] INFO RESPONSE - disconnect. end of response thread.
+2020-12-11 18:58:12.958721600000 [$pid(ThreadId 8)] CRITICAL THREAD_MGR - Critical exit started.
+2020-12-11 18:58:13.529618000000 [$pid(ThreadId 5)] INFO APP - can not use haskell-dap. deleting "--with-ghc=haskell-dap"
+2020-12-11 18:58:13.530617700000 [$pid(ThreadId 5)] INFO APP - "--with-ghc" option not found. adding "--with-ghc=ghci-dap"
