@@ -1,6 +1,7 @@
 module Solve
     (
         solutionSteps,
+        simplifyEquation,
         printExpr,
         printEquation
     ) where
@@ -9,6 +10,10 @@ import ParseExpr
 import Simplify
 
 import Data.List
+import Data.List.Ordered
+import Debug.Trace
+
+simplifyEquation (Equation left right) = Equation (simplifyExpr left) (simplifyExpr right)
 
 -- checks that a simplified expression only has a single variable
 univariate :: BAE -> Bool
@@ -38,7 +43,7 @@ subtractExpr :: BAE -> BAE -> BAE
 subtractExpr a b = simplifyExpr (BAEBinaryDiff b a)
 
 addExpr :: BAE -> BAE -> BAE
-addExpr a b = simplifyExpr (BAESum [a, b])
+addExpr a b = simplifyExpr (BAESum [a,b])
 
 multiplyExpr :: BAE -> BAE -> BAE
 multiplyExpr a b = simplifyExpr (BAEProduct [a, b])
@@ -63,9 +68,9 @@ identity a = a
 solutionSteps :: Equation -> (String, Equation)
 solutionSteps (Equation left right) = let
     -- subtract the right side from both sides. Now in the form: f(x) + G = 0. Only do this if there is a variable in the right side.
-    left' = subtractExpr right left
-    right' = subtractExpr right right
-    thisEquation = if not (null (symbolsInExpr right)) then Equation left' right' else Equation left right 
+    left' = simplifyExpr (subtractExpr right left)
+    right' = simplifyExpr (subtractExpr right right)
+    thisEquation = if not (null (symbolsInExpr right)) then Equation (simplifyExpr left') (BAEInteger 0) else Equation left right 
     thisStep = if not (null (symbolsInExpr right)) then "Subtract " ++ printExpr right ++ " from both sides and simplify.\n\n" ++ printEquation thisEquation ++ "\n\n" else ""
 
     (followingSteps, finalEquation) = solutionSteps' thisEquation
@@ -85,6 +90,7 @@ solutionSteps' (Equation left right) = let
             leftInv = multiplyExpr (mleft)
             rightInv = multiplyExpr (mright)
             op = swap (rightInv (leftInv left)) (rightInv (leftInv right)) . rightInv . leftInv
+        _ -> error ("Left:  " ++ show left ++ "\n" ++ "Step:   " ++ "thisStep" ++ "\n")
 
     thisEquation = Equation (simplifyExpr (thisOp left)) (simplifyExpr (thisOp right))
     thisMsg = thisStep ++ printEquation thisEquation ++ "\n\n"

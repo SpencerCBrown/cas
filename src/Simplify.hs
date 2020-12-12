@@ -136,6 +136,11 @@ simplifyProduct (BAEProduct os)
     | any isUndefined os        = BAEUndefined
     | BAEInteger 0 `elem` os    = BAEInteger 0
     | length os == 1            = head os
+    | length os == 2 && (isConstant (head os) && isSum (head (tail os))) || (isSum (head os) && isConstant (head (tail os))) = let
+        distConst (e1, e2)
+            | isConstant e1 && isSum e2 = let (BAESum ops) = e2 in simplifySum (BAESum (sort (map (\o -> simplifyProduct (BAEProduct [e1, o])) ops)))
+            | isSum e1 && isConstant e2 = let (BAESum ops) = e1 in simplifySum (BAESum (sort (map (\o -> simplifyProduct (BAEProduct [e2, o])) ops)))
+        in distConst (head os, head (tail os))
     | otherwise                 = let v = simplifyProduct' (BAEProduct os) in if length v == 1 then head v else if null v then BAEInteger 1 else BAEProduct v
 
 simplifyProduct' :: BAE -> [BAE]
@@ -204,12 +209,12 @@ simplifySum' (BAESum os)
                 (BAESum os1) = e1
                 (BAESum os2) = e2
                 in mergeSums os1 os2
-            | isSum e1 && not (isSum e2) = let (BAEProduct os1) = e1 in mergeSums os1 [e2]
-            | isSum e2 && not (isSum e1) = let (BAEProduct os1) = e2 in mergeSums os1 [e1]
+            | isSum e1 && not (isSum e2) = let (BAESum os1) = e1 in mergeSums os1 [e2]
+            | isSum e2 && not (isSum e1) = let (BAESum os1) = e2 in mergeSums os1 [e1]
         case3 ops1 = let
             w = simplifySum' (BAESum (tail ops1))
             (BAESum ops2) = head ops1
-            in if isSum (head ops1) then mergeSums ops2 w else mergeProducts [head ops1] w
+            in if isSum (head ops1) then mergeSums ops2 w else mergeSums [head ops1] w
 
 mergeSums :: [BAE] -> [BAE] -> [BAE]
 mergeSums p q
